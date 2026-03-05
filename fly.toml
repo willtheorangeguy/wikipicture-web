@@ -1,0 +1,52 @@
+# fly.toml - Fly.io deployment configuration
+# Deploy with: fly deploy
+# See README.md for full instructions
+
+app = "wikipicture"
+primary_region = "lhr"  # London - change to nearest region
+
+[build]
+  dockerfile = "nginx/Dockerfile"
+  # Build context is the web/ directory
+
+[env]
+  ENVIRONMENT = "production"
+
+[[services]]
+  http_checks = []
+  internal_port = 80
+  protocol = "tcp"
+  script_checks = []
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+  [[services.http_checks]]
+    interval = "10s"
+    grace_period = "5s"
+    method = "get"
+    path = "/api/health"
+    protocol = "http"
+    timeout = "2s"
+    tls_skip_verify = false
+
+[mounts]
+  source = "uploads"
+  destination = "/tmp/wikipicture"

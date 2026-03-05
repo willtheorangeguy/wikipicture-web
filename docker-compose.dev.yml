@@ -1,0 +1,32 @@
+version: "3.9"
+
+# Development overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# The React frontend is NOT run in Docker during development.
+# Start it separately:  cd frontend && npm run dev
+# Vite's dev server proxies /api requests to backend:8000 (see vite.config.ts).
+
+services:
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend/app:/app/app
+      - uploads:/tmp/wikipicture
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - ENVIRONMENT=development
+
+  worker:
+    build: ./backend
+    command: celery -A app.tasks.process.celery_app worker --loglevel=debug --concurrency=1
+    volumes:
+      - ./backend/app:/app/app
+      - uploads:/tmp/wikipicture
+
+volumes:
+  uploads:
