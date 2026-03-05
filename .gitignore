@@ -1,0 +1,31 @@
+# Dependencies
+frontend/node_modules/
+e2e/node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment
+.env
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Uploads / temp
+uploads/
+
+# Test artifacts
+e2e/playwright-report/
+e2e/test-results/
+
+# OS
+.DS_Store
+Thumbs.db
