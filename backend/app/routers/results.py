@@ -76,7 +76,7 @@ async def get_results(job_id: str, request: Request) -> ResultsResponse:
         # Distinguish "still running" from "never existed / expired"
         redis = request.app.state.redis
         status = await redis.get(f"job:{job_id}:status")
-        if status in ("processing", "queued") or status is None:
+        if status in ("processing", "queued"):
             raise HTTPException(status_code=202, detail="Job is still processing")
         raise HTTPException(status_code=404, detail=f"Results for job '{job_id}' not found")
 
