@@ -17,7 +17,7 @@ dependencies = [
     "jinja2>=3.1",
     "Pillow>=10.0",
     "pillow-heif>=0.13",
-    "wikipicture>=0.2.1",
+    "wikipicture>=0.2.0",
     "python-magic>=0.4.27",
 ]
 

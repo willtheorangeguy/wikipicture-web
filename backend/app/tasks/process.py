@@ -174,19 +174,17 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
         # Step 3 — rank
         ranked = rank_opportunities(all_opportunities)
 
-        # Step 4 — generate thumbnails for top 20
-        for opp in ranked[:20]:
-            fp_attr = getattr(opp, "filepath", None)
-            if fp_attr is not None:
-                thumb = generate_thumbnail(Path(str(fp_attr)))
-                if thumb is not None:
-                    try:
-                        opp.thumbnail_b64 = thumb
-                    except Exception:
-                        pass  # dataclass may be frozen; ignore
-
-        # Step 5 — serialise
+        # Step 4 — serialise first (opportunity objects may be frozen dataclasses)
         serialisable = _make_serializable(ranked)
+
+        # Step 5 — inject thumbnails into the serialised dicts for top 20
+        for opp_dict in serialisable[:20]:
+            fp = opp_dict.get("filepath")
+            if fp is not None:
+                thumb = generate_thumbnail(Path(str(fp)))
+                if thumb is not None:
+                    opp_dict["thumbnail_b64"] = thumb
+
         results_dict = {
             "job_id": job_id,
             "total_photos": total,
