@@ -16,7 +16,7 @@ from celery import Celery
 
 from app.config import settings
 from app.models import ProgressEvent
-from app.storage import save_results
+from app.storage import save_results, save_report
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +194,9 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
         }
 
         save_results(job_id, results_dict)
+
+        from app.report import generate_report
+        save_report(job_id, generate_report(results_dict))
 
         publish_progress(r, job_id, "done", total, total, "Analysis complete!")
         r.set(f"job:{job_id}:status", "done", ex=settings.job_ttl_seconds)
