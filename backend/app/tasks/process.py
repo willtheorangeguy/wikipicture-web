@@ -82,6 +82,41 @@ def _make_serializable(obj: object) -> object:
     return obj
 
 
+def _format_location_name(location: object) -> str:
+    """Build a human-readable location string from a LocationInfo object.
+
+    Priority: place_name (landmark/POI), city, state, country.
+    Falls back to display_name, then coordinates, then repr.
+    """
+    place = getattr(location, "place_name", None)
+    city = getattr(location, "city", None)
+    state = getattr(location, "state", None)
+    country = getattr(location, "country", None)
+
+    parts: list[str] = []
+    if place:
+        parts.append(place)
+    if city and city != place:
+        parts.append(city)
+    if state and state != city:
+        parts.append(state)
+    if country:
+        parts.append(country)
+    if parts:
+        return ", ".join(parts)
+
+    display = getattr(location, "display_name", None)
+    if display:
+        return display
+
+    lat = getattr(location, "latitude", None)
+    lon = getattr(location, "longitude", None)
+    if lat is not None and lon is not None:
+        return f"{lat:.4f}, {lon:.4f}"
+
+    return str(location)
+
+
 @celery_app.task(bind=True, name="process_photos")
 def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C901
     from wikipicture.clustering import cluster_photos
@@ -119,7 +154,7 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
             # Geocode
             publish_progress(r, job_id, "geocoding", ci, num_clusters, f"Geocoding cluster {ci + 1}/{num_clusters}...")
             location: object = reverse_geocode(lat, lon)
-            location_name: str = location.name if hasattr(location, "name") else str(location)
+            location_name: str = _format_location_name(location)
 
             # Wikipedia
             publish_progress(r, job_id, "wikipedia", ci, num_clusters, f"Searching Wikipedia for {location_name}...")

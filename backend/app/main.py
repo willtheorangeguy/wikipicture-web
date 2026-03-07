@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 # App factory
 # ---------------------------------------------------------------------------
 def create_app() -> FastAPI:
-    app = FastAPI(title="WikiPicture API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="WikiPicture API", version="0.2.1", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health", tags=["health"])
     async def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": "0.2.1"}
 
     return app
 
