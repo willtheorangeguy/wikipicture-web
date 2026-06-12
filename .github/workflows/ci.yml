@@ -18,10 +18,13 @@ jobs:
           cache: pip
       - name: Install dependencies
         working-directory: backend
-        run: pip install -e "."
+        run: pip install -e ".[test]"
       - name: Import check
         working-directory: backend
         run: python -c "from app.main import app; print('Import OK')"
+      - name: Tests
+        working-directory: backend
+        run: pytest
 
   frontend-build:
     name: Frontend (TypeScript build)

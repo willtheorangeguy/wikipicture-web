@@ -26,6 +26,25 @@ export function ProgressView({ jobId }: Props) {
   const step    = latest?.step ?? '';
 
   if (status === 'failed') {
+    // Rate limiting is a transient, retryable condition — present it as a
+    // warning rather than a hard failure.
+    if (step === 'rate_limited') {
+      return (
+        <div className="card" style={{ borderColor: 'var(--color-warning, #f59e0b)' }}>
+          <div style={{
+            background: '#fef3c7',
+            color: '#92400e',
+            borderRadius: 'var(--radius-sm)',
+            padding: '1rem 1.25rem',
+            fontWeight: 500,
+          }}>
+            <span style={{ marginRight: '0.5rem' }}>⚠️</span>
+            {latest?.message ?? 'Too many requests — please try again later.'}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="card" style={{ borderColor: 'var(--color-danger)' }}>
         <div style={{
