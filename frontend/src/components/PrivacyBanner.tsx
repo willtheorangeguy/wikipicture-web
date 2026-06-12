@@ -18,15 +18,15 @@ export function PrivacyBanner() {
     <div
       role="banner"
       style={{
-        background: '#eff6ff',
-        borderBottom: '1px solid #bfdbfe',
+        background: '#e3f2fd',
+        borderBottom: '1px solid #bbdefb',
         padding: '0.55rem 1.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '1rem',
         fontSize: '0.85rem',
-        color: '#1d4ed8',
+        color: '#0d47a1',
       }}
     >
       <span>
@@ -41,14 +41,14 @@ export function PrivacyBanner() {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: '#60a5fa',
+          color: '#1565c0',
           fontSize: '1.1rem',
           lineHeight: 1,
           padding: '0.1rem 0.3rem',
           flexShrink: 0,
         }}
-        onMouseOver={(e) => (e.currentTarget.style.color = '#1d4ed8')}
-        onMouseOut={(e) => (e.currentTarget.style.color = '#60a5fa')}
+        onMouseOver={(e) => (e.currentTarget.style.color = '#0d47a1')}
+        onMouseOut={(e) => (e.currentTarget.style.color = '#1565c0')}
       >
         ×
       </button>

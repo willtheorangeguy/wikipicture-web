@@ -43,23 +43,19 @@ export default function App() {
 
   return (
     <div>
-      <header style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '1rem 0' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '1.75rem' }}>📷</span>
+      <header className="app-header">
+        <div className="container">
+          <span style={{ fontSize: '1.8rem' }}>📸</span>
           <div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>
-              WikiPicture
-            </h1>
-            <p style={{ fontSize: '0.825rem', color: '#64748b' }}>
-              Find Wikipedia articles that need your travel photos
-            </p>
+            <h1>WikiPicture</h1>
+            <p>Find Wikipedia articles that need your travel photos</p>
           </div>
         </div>
       </header>
 
       <PrivacyBanner />
 
-      <main className="container" style={{ paddingTop: '2rem', paddingBottom: '3rem' }}>
+      <main className="container" style={{ paddingTop: '1.5rem', paddingBottom: '2rem' }}>
         {appState === 'upload' && (
           <DropZone onJobStarted={handleJobStarted} />
         )}
@@ -80,6 +76,12 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <footer className="app-footer">
+        <div className="container" style={{ display: 'block' }}>
+          WikiPicture — Find Wikipedia articles that need your photos
+        </div>
+      </footer>
     </div>
   );
 }
