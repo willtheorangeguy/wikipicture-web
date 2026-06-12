@@ -33,6 +33,19 @@ async def stream_job_progress(job_id: str, request: Request) -> StreamingRespons
                 # Check for terminal status before draining pubsub
                 status = await redis.get(f"job:{job_id}:status")
                 if status in ("done", "failed"):
+                    # Flush any buffered progress messages (e.g. the final
+                    # "rate_limited"/"failed" event) so the client sees them
+                    # instead of just the terminal status.
+                    while True:
+                        pending = await pubsub.get_message(
+                            ignore_subscribe_messages=True, timeout=0.1
+                        )
+                        if pending is None:
+                            break
+                        data = pending["data"]
+                        if isinstance(data, bytes):
+                            data = data.decode()
+                        yield f"data: {data}\n\n"
                     yield f"event: status\ndata: {status}\n\n"
                     break
 

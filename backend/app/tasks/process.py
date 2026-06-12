@@ -8,10 +8,12 @@ import datetime
 import io
 import json
 import logging
+import threading
 from enum import Enum
 from pathlib import Path
 
 import redis as redis_lib
+import requests.adapters
 from celery import Celery
 
 from app.config import settings
@@ -19,6 +21,42 @@ from app.models import ProgressEvent
 from app.storage import save_results, save_report
 
 logger = logging.getLogger(__name__)
+
+# User-facing message shown when an upstream API (Wikipedia/Commons/geocoder)
+# rate-limits us with HTTP 429.
+RATE_LIMIT_MESSAGE = (
+    "Too many requests to Wikipedia right now (HTTP 429). "
+    "Please wait a few minutes and try again."
+)
+
+
+class RateLimitError(Exception):
+    """Raised when an upstream API responds with HTTP 429."""
+
+
+# The wikipicture library catches and swallows upstream HTTP errors internally,
+# so a 429 never propagates to this task on its own. We hook the requests
+# transport layer to record when any 429 is seen during a job, then bail out.
+_rate_limit_state = threading.local()
+_orig_adapter_send = requests.adapters.HTTPAdapter.send
+
+
+def _tracking_send(self, request, *args, **kwargs):
+    response = _orig_adapter_send(self, request, *args, **kwargs)
+    if response.status_code == 429:
+        _rate_limit_state.hit = True
+    return response
+
+
+requests.adapters.HTTPAdapter.send = _tracking_send
+
+
+def _reset_rate_limit() -> None:
+    _rate_limit_state.hit = False
+
+
+def _rate_limit_hit() -> bool:
+    return getattr(_rate_limit_state, "hit", False)
 
 celery_app = Celery("wikipicture", broker=settings.redis_url, backend=settings.redis_url)
 celery_app.conf.update(
@@ -129,6 +167,7 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
 
     r = redis_lib.from_url(settings.redis_url)
     total = len(file_paths)
+    _reset_rate_limit()
 
     try:
         # Step 1 — extract EXIF/GPS metadata
@@ -164,12 +203,22 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
             publish_progress(r, job_id, "commons", ci, num_clusters, f"Checking Commons saturation for cluster {ci + 1}...")
             commons = check_commons_saturation(lat, lon)
 
+            # Bail out early on rate limiting rather than grinding through slow
+            # retries for every remaining cluster.
+            if _rate_limit_hit():
+                raise RateLimitError(RATE_LIMIT_MESSAGE)
+
             # Quality + scoring per photo
             for photo in cluster.photos:
                 filepath = Path(photo.filepath) if hasattr(photo, "filepath") else Path(str(photo))
                 quality = assess_quality(filepath)
                 opportunity = score_opportunity(articles, commons, quality, filepath, lat, lon, location_name)
                 all_opportunities.append(opportunity)
+
+        # A 429 may have been swallowed during geocoding (a different upstream
+        # service) without tripping the in-loop check above.
+        if _rate_limit_hit():
+            raise RateLimitError(RATE_LIMIT_MESSAGE)
 
         # Step 3 — rank
         ranked = rank_opportunities(all_opportunities)
@@ -201,10 +250,19 @@ def process_photos(self, job_id: str, file_paths: list[str]) -> dict:  # noqa: C
 
         return results_dict
 
+    except RateLimitError:
+        logger.warning("process_photos hit upstream rate limit for job %s", job_id)
+        # Publish the friendly message first, then flip status terminal — the
+        # SSE stream drains pending messages before closing, so the client sees
+        # the rate-limit step rather than getting stuck on "processing".
+        publish_progress(r, job_id, "rate_limited", 0, total, RATE_LIMIT_MESSAGE)
+        r.set(f"job:{job_id}:status", "failed", ex=settings.job_ttl_seconds)
+        return {"job_id": job_id, "total_photos": total, "opportunities": []}
+
     except Exception as e:
         logger.exception("process_photos failed for job %s", job_id)
-        r.set(f"job:{job_id}:status", "failed", ex=settings.job_ttl_seconds)
         publish_progress(r, job_id, "failed", 0, total, str(e))
+        r.set(f"job:{job_id}:status", "failed", ex=settings.job_ttl_seconds)
         raise
 
 
