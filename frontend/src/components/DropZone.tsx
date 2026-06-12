@@ -142,9 +142,9 @@ export function DropZone({ onJobStarted }: DropZoneProps) {
   // ── styles ──────────────────────────────────────────────────────────────────
 
   const dropZoneStyle: React.CSSProperties = {
-    border: `2px dashed ${state === 'dragover' ? '#2563eb' : '#cbd5e1'}`,
+    border: `2px dashed ${state === 'dragover' ? '#1565c0' : '#cbd5e1'}`,
     borderRadius: '0.75rem',
-    background: state === 'dragover' ? '#eff6ff' : '#f8fafc',
+    background: state === 'dragover' ? '#e3f2fd' : '#fafafa',
     padding: '3rem 2rem',
     display: 'flex',
     flexDirection: 'column',
@@ -235,7 +235,7 @@ export function DropZone({ onJobStarted }: DropZoneProps) {
             height="52"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={state === 'dragover' ? '#2563eb' : '#94a3b8'}
+            stroke={state === 'dragover' ? '#1565c0' : '#94a3b8'}
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -449,7 +449,7 @@ export function DropZone({ onJobStarted }: DropZoneProps) {
             <path
               d="M40 22a18 18 0 0 0-18-18"
               fill="none"
-              stroke="#2563eb"
+              stroke="#1565c0"
               strokeWidth="4"
               strokeLinecap="round"
             />

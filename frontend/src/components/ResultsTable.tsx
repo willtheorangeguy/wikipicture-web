@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { OpportunityOut } from '../types';
 
-type SortKey = 'filename' | 'location_name' | 'score' | 'recommendation';
+type SortKey = 'location_name' | 'score' | 'recommendation' | 'images';
 type SortDir = 'asc' | 'desc';
 
 const SATURATION_BADGE: Record<string, string> = {
@@ -12,24 +12,20 @@ const SATURATION_BADGE: Record<string, string> = {
   SATURATED: 'badge-red',
 };
 
-function scoreBadgeClass(score: number): string {
-  if (score >= 70) return 'badge-green';
-  if (score >= 45) return 'badge-yellow';
-  if (score >= 25) return 'badge-orange';
-  return 'badge-red';
+/** Maps a score to the report's four-tier colour bucket. */
+function scoreColor(score: number): 'green' | 'yellow' | 'orange' | 'red' {
+  if (score >= 70) return 'green';
+  if (score >= 45) return 'yellow';
+  if (score >= 25) return 'orange';
+  return 'red';
 }
 
-function scoreBarClass(score: number): string {
-  if (score >= 70) return 'high';
-  if (score >= 45) return 'medium';
-  return 'low';
-}
-
-function rowTint(score: number): string {
-  if (score >= 70) return 'rgba(22,163,74,0.04)';
-  if (score >= 45) return 'rgba(217,119,6,0.04)';
-  if (score >= 25) return 'rgba(194,65,12,0.04)';
-  return 'rgba(220,38,38,0.04)';
+/** Full-row tint class, mirroring the HTML report's recommendation rows. */
+function rowClass(score: number): string {
+  if (score >= 70) return 'row-highly-recommended';
+  if (score >= 45) return 'row-recommended';
+  if (score >= 25) return 'row-considered';
+  return 'row-not-recommended';
 }
 
 interface Props {
@@ -42,14 +38,18 @@ export function ResultsTable({ opportunities, totalPhotos }: Props) {
   const [sortDir, setSortDir]   = useState<SortDir>('desc');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const highCount = opportunities.filter(o => o.score >= 70).length;
+  const highCount      = opportunities.filter(o => o.score >= 70).length;
+  const withGps        = opportunities.length;
+  const uniqueLocations = new Set(
+    opportunities.map(o => o.location_name || `${o.latitude},${o.longitude}`)
+  ).size;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
-      setSortDir('desc');
+      setSortDir(key === 'location_name' ? 'asc' : 'desc');
     }
   }
 
@@ -61,11 +61,17 @@ export function ResultsTable({ opportunities, totalPhotos }: Props) {
     });
   }
 
+  function sortValue(o: OpportunityOut, key: SortKey): string | number {
+    switch (key) {
+      case 'images': return o.best_article?.image_count ?? -1;
+      case 'score':  return o.score;
+      default:       return (o[key] ?? '').toString().toLowerCase();
+    }
+  }
+
   const sorted = [...opportunities].sort((a, b) => {
-    let av: string | number = a[sortKey] ?? '';
-    let bv: string | number = b[sortKey] ?? '';
-    if (typeof av === 'string') av = av.toLowerCase();
-    if (typeof bv === 'string') bv = bv.toLowerCase();
+    const av = sortValue(a, sortKey);
+    const bv = sortValue(b, sortKey);
     if (av < bv) return sortDir === 'asc' ? -1 : 1;
     if (av > bv) return sortDir === 'asc' ?  1 : -1;
     return 0;
@@ -75,13 +81,13 @@ export function ResultsTable({ opportunities, totalPhotos }: Props) {
     const active = sortKey === col;
     return (
       <th
+        className="sortable"
         onClick={() => toggleSort(col)}
-        style={{ cursor: 'pointer', userSelect: 'none' }}
         title={`Sort by ${label}`}
       >
-        {label}{' '}
-        <span style={{ opacity: active ? 1 : 0.35 }}>
-          {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+        {label}
+        <span className="sort-arrow">
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
         </span>
       </th>
     );
@@ -90,7 +96,7 @@ export function ResultsTable({ opportunities, totalPhotos }: Props) {
   if (opportunities.length === 0) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📷</div>
+        <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📸</div>
         <p style={{ fontWeight: 600, marginBottom: '0.4rem' }}>No opportunities found</p>
         <p style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem' }}>
           None of the analyzed photos matched Wikipedia articles needing images in their location.
@@ -102,166 +108,153 @@ export function ResultsTable({ opportunities, totalPhotos }: Props) {
 
   return (
     <div data-testid="results-table">
-      {/* Summary */}
-      <p style={{
-        fontSize: '0.875rem',
-        color: 'var(--color-gray-500)',
-        marginBottom: '0.75rem',
-      }}>
-        Analyzed <strong>{totalPhotos}</strong> photos &middot; Found{' '}
-        <strong>{opportunities.length}</strong> opportunities &middot;{' '}
-        <strong>{highCount}</strong> highly recommended
-      </p>
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 68 }}>Thumb</th>
-                <SortTh col="filename"      label="Photo" />
-                <SortTh col="location_name" label="Location" />
-                <SortTh col="score"         label="Score" />
-                <SortTh col="recommendation" label="Recommendation" />
-                <th>Wikipedia Article</th>
-                <th>Commons</th>
-                <th>Reasons</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map(opp => {
-                const isExp = expanded.has(opp.filename);
-                const reasons = opp.reasons ?? [];
-                return (
-                  <tr key={opp.filename} style={{ background: rowTint(opp.score) }}>
-                    {/* Thumbnail */}
-                    <td style={{ padding: '0.5rem 0.6rem' }}>
-                      {opp.thumbnail_b64 ? (
-                        <img
-                          src={`data:image/jpeg;base64,${opp.thumbnail_b64}`}
-                          alt={opp.filename}
-                          style={{
-                            width: 60,
-                            height: 60,
-                            objectFit: 'cover',
-                            borderRadius: 'var(--radius-sm)',
-                            display: 'block',
-                          }}
-                        />
-                      ) : (
-                        <div style={{
-                          width: 60,
-                          height: 60,
-                          background: 'var(--color-gray-200)',
-                          borderRadius: 'var(--radius-sm)',
-                        }} />
-                      )}
-                    </td>
-
-                    {/* Photo filename */}
-                    <td style={{ maxWidth: 160, wordBreak: 'break-all', fontSize: '0.8rem' }}>
-                      {opp.filename}
-                    </td>
-
-                    {/* Location */}
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {opp.location_name || (
-                        <span style={{ color: 'var(--color-gray-500)' }}>
-                          {opp.latitude.toFixed(4)}, {opp.longitude.toFixed(4)}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Score */}
-                    <td style={{ minWidth: 90 }}>
-                      <div className="score-bar-track" style={{ marginBottom: '0.3rem' }}>
-                        <div
-                          className={`score-bar ${scoreBarClass(opp.score)}`}
-                          style={{ width: `${opp.score}%` }}
-                        />
-                      </div>
-                      <span className={`badge ${scoreBadgeClass(opp.score)}`}>
-                        {opp.score}
-                      </span>
-                    </td>
-
-                    {/* Recommendation */}
-                    <td>
-                      <span className={`badge ${scoreBadgeClass(opp.score)}`}>
-                        {opp.recommendation}
-                      </span>
-                    </td>
-
-                    {/* Wikipedia Article */}
-                    <td>
-                      {opp.best_article ? (
-                        <a
-                          href={opp.best_article.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 500 }}
-                        >
-                          {opp.best_article.title}
-                        </a>
-                      ) : (
-                        <span style={{ color: 'var(--color-gray-500)', fontStyle: 'italic' }}>
-                          None found
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Commons */}
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {opp.commons ? (
-                        <>
-                          <span className={`badge ${SATURATION_BADGE[opp.commons.saturation] ?? 'badge-yellow'}`}>
-                            {opp.commons.saturation}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-gray-500)', marginLeft: '0.35rem' }}>
-                            {opp.commons.nearby_image_count}
-                          </span>
-                        </>
-                      ) : (
-                        <span style={{ color: 'var(--color-gray-500)' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Reasons */}
-                    <td style={{ minWidth: 180 }}>
-                      {reasons.length === 0 ? (
-                        <span style={{ color: 'var(--color-gray-500)' }}>—</span>
-                      ) : (
-                        <>
-                          <ul style={{ paddingLeft: '1rem', margin: 0 }}>
-                            {(isExp ? reasons : reasons.slice(0, 2)).map((r, i) => (
-                              <li key={i} style={{ fontSize: '0.78rem', lineHeight: 1.4 }}>{r}</li>
-                            ))}
-                          </ul>
-                          {reasons.length > 2 && (
-                            <button
-                              onClick={() => toggleExpand(opp.filename)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--color-primary)',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                padding: '0.15rem 0',
-                                marginTop: '0.15rem',
-                              }}
-                            >
-                              {isExp ? 'show less' : `+${reasons.length - 2} more`}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Stat cards — same summary tiles as the HTML report */}
+      <div className="stats">
+        <div className="stat-card">
+          <div className="value">{totalPhotos}</div>
+          <div className="label">Photos Scanned</div>
         </div>
+        <div className="stat-card">
+          <div className="value">{withGps}</div>
+          <div className="label">Opportunities Found</div>
+        </div>
+        <div className="stat-card">
+          <div className="value">{uniqueLocations}</div>
+          <div className="label">Unique Locations</div>
+        </div>
+        <div className="stat-card">
+          <div className="value">{highCount}</div>
+          <div className="label">Highly Recommended</div>
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Thumbnail</th>
+              <SortTh col="location_name"  label="Location" />
+              <SortTh col="score"          label="Score" />
+              <SortTh col="recommendation" label="Recommendation" />
+              <th>Wikipedia Article</th>
+              <SortTh col="images"         label="Best Article Images" />
+              <th>Commons Saturation</th>
+              <th>Key Reasons</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(opp => {
+              const isExp = expanded.has(opp.filename);
+              const reasons = opp.reasons ?? [];
+              const color = scoreColor(opp.score);
+              return (
+                <tr key={opp.filename} className={rowClass(opp.score)}>
+                  {/* Thumbnail */}
+                  <td>
+                    {opp.thumbnail_b64 ? (
+                      <img
+                        className="thumb"
+                        src={`data:image/jpeg;base64,${opp.thumbnail_b64}`}
+                        alt={opp.filename}
+                        title={opp.filename}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="thumb" title={opp.filename} />
+                    )}
+                  </td>
+
+                  {/* Location */}
+                  <td style={{ maxWidth: 280 }}>
+                    {opp.location_name || (
+                      <span style={{ color: 'var(--color-gray-500)' }}>
+                        {opp.latitude.toFixed(4)}, {opp.longitude.toFixed(4)}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Score */}
+                  <td data-value={opp.score}>
+                    <span className={`score-bar score-${color}`}>
+                      <span className="bar" style={{ width: `${Math.min(opp.score, 100)}px` }} />
+                      <span className="num">{opp.score}</span>
+                    </span>
+                  </td>
+
+                  {/* Recommendation */}
+                  <td style={{ whiteSpace: 'nowrap' }}>{opp.recommendation}</td>
+
+                  {/* Wikipedia Article */}
+                  <td>
+                    {opp.best_article ? (
+                      <a
+                        href={opp.best_article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {opp.best_article.title}
+                      </a>
+                    ) : (
+                      <span style={{ color: 'var(--color-gray-300)' }}>No article found</span>
+                    )}
+                  </td>
+
+                  {/* Best Article Images */}
+                  <td data-value={opp.best_article?.image_count ?? 0}>
+                    {opp.best_article ? opp.best_article.image_count : '—'}
+                  </td>
+
+                  {/* Commons Saturation */}
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {opp.commons ? (
+                      <>
+                        <span className={`badge ${SATURATION_BADGE[opp.commons.saturation] ?? 'badge-yellow'}`}>
+                          {opp.commons.saturation}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-gray-500)', marginLeft: '0.4rem' }}>
+                          {opp.commons.nearby_image_count} nearby
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--color-gray-500)' }}>—</span>
+                    )}
+                  </td>
+
+                  {/* Key Reasons */}
+                  <td style={{ minWidth: 200 }}>
+                    {reasons.length === 0 ? (
+                      <span style={{ color: 'var(--color-gray-500)' }}>—</span>
+                    ) : (
+                      <>
+                        <ul>
+                          {(isExp ? reasons : reasons.slice(0, 2)).map((r, i) => (
+                            <li key={i}>{r}</li>
+                          ))}
+                        </ul>
+                        {reasons.length > 2 && (
+                          <button
+                            onClick={() => toggleExpand(opp.filename)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--color-primary)',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem 0',
+                              marginTop: '0.15rem',
+                            }}
+                          >
+                            {isExp ? 'show less' : `+${reasons.length - 2} more`}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
