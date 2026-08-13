@@ -8,7 +8,7 @@ version = "0.2.1"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.140.7",
-    "uvicorn[standard]>=0.51.0",
+    "uvicorn[standard]>=0.52.1",
     "celery[redis]>=5.3",
     "redis>=8.0.0",
     "python-multipart>=0.0.9",
