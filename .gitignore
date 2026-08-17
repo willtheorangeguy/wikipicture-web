@@ -29,3 +29,5 @@ e2e/test-results/
 # OS
 .DS_Store
 Thumbs.db
+.bandit/
+.recall/
