@@ -1,4 +1,8 @@
 import json
+import os
+import tempfile
+
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -12,7 +16,12 @@ class Settings(BaseSettings):
     rate_limit_uploads_per_hour: int = 5
     rate_limit_photos_per_day: int = 100
     job_ttl_seconds: int = 3600  # 1 hour
-    temp_dir: str = "/tmp/wikipicture"
+    # Resolved from the platform temp dir rather than a hardcoded /tmp. On the
+    # Linux containers this still evaluates to /tmp/wikipicture, which is the
+    # path the backend and worker share as a Docker volume.
+    temp_dir: str = Field(
+        default_factory=lambda: os.path.join(tempfile.gettempdir(), "wikipicture")
+    )
     environment: str = "production"
 
     @property
