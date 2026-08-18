@@ -41,13 +41,35 @@ scrutiny; see [`internal/known-issues.md`](./internal/known-issues.md).
 
 ## `GET /api/job/{job_id}`
 
-Poll for status.
+**A Server-Sent Events stream**, not a polling endpoint. It returns a `StreamingResponse` and
+holds the connection open for the life of the job.
 
-```json
-{ "job_id": "…", "status": "processing", "progress": 40 }
+```
+data: {"stage": "geocoding", "current": 3, "total": 12}
+
+data: {"stage": "wikipedia", "current": 7, "total": 12}
+
+event: status
+data: done
 ```
 
-Statuses: `queued`, `processing`, `completed`, `failed`.
+The handler subscribes to the Redis pub/sub channel `job:{job_id}:progress`, which the Celery
+worker publishes to as it advances, and relays each message to the client. A keepalive is sent
+every 15 seconds so intermediaries do not close an idle connection.
+
+When `job:{job_id}:status` reaches `done` or `failed`, the handler **drains any buffered progress
+messages first** and then emits a terminal `event: status`. That ordering is deliberate: a job
+that fails on an upstream rate limit publishes an explanatory event just before its status flips,
+and without the drain the client would see only `failed`.
+
+The loop also checks `request.is_disconnected()` each iteration, so a closed browser tab releases
+the subscription rather than streaming into nothing.
+
+Consuming it from the frontend is an `EventSource`; `useProgress.ts` opens and closes it.
+
+**Behind a proxy this needs configuration.** nginx must not buffer the response and needs a read
+timeout longer than the job — `nginx/nginx.conf` sets both. A proxy with default settings will
+buffer the stream and deliver nothing until the job ends.
 
 ## `GET /api/results/{job_id}`
 
