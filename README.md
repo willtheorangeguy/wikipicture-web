@@ -1,168 +1,73 @@
-# WikiPicture Web
+<!-- Logo -->
+<h1 align="center">WikiPicture Web</h1>
 
-## Overview
+<!-- Copy -->
+<h4 align="center">A drag-and-drop web front end for WikiPicture — upload photos, get back the Wikipedia articles they could illustrate.</h4>
 
-WikiPicture Web is a drag-and-drop web interface for the [WikiPicture CLI tool](https://pypi.org/project/wikipicture/). Upload photos and get the same Wikipedia-powered analysis you know from the CLI — all through a browser, no terminal required.
+<!-- Badges -->
+<div align="center">
+  <img alt="GitHub Issues" src="https://img.shields.io/github/issues/willtheorangeguy/wikipicture-web">
+  <img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/willtheorangeguy/wikipicture-web">
+  <img alt="License" src="https://img.shields.io/github/license/willtheorangeguy/wikipicture-web">
+</div>
 
----
+<!-- Navigation -->
+<p align="center">
+  <a href="#key-features">Key Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#support">Support</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#credits">Credits</a> •
+  <a href="#license">License</a>
+</p>
 
-## Quick Start (Self-Hosting with Docker)
+<!-- Screenshot -->
+<div align="center">
+  <img src="https://raw.githubusercontent.com/willtheorangeguy/.github/main/icons/wikipicture-web/main.png" alt="WikiPicture Web">
+</div>
 
-### Prerequisites
+## Key Features
 
-- Docker and Docker Compose installed
+- The same analysis as the [WikiPicture CLI](https://pypi.org/project/wikipicture/), with no terminal.
+- Drag and drop JPEG or HEIC photos; results arrive as a downloadable HTML report.
+- Uploads are processed asynchronously by a Celery worker, so the browser is not held open.
+- File type is checked from magic bytes rather than the extension.
+- Per-IP rate limits and a job TTL, for a service meant to be exposed to other people.
+- Self-hosted with one `docker compose up`, or spread across Fly.io apps.
 
-### Run locally
+## Installation
 
 ```bash
-cd web
 docker compose up --build
 ```
 
-Open http://localhost
+Then open <http://localhost>. See [`docs/installation.md`](docs/installation.md).
 
-### Run in development mode
+## Usage
 
-```bash
-# Start backend + Redis with hot-reload
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up backend worker redis
+Drop photos onto the page, wait for the job to finish, and download the report.
 
-# In another terminal, start the frontend dev server
-cd frontend
-npm install
-npm run dev
-```
+## Documentation
 
-- Frontend: http://localhost:5173
-- API: http://localhost:8000
+Full documentation lives in [`docs/`](docs/README.md):
+[Quickstart](docs/quickstart.md) · [Installation](docs/installation.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Development](docs/development.md) · [Deployment](docs/deployment.md) · [FAQ](docs/faq.md) · [Troubleshooting](docs/troubleshooting.md) · [Roadmap](docs/roadmap.md)
 
-### Configuration
+> **Before exposing this to the internet**, read [`docs/internal/known-issues.md`](docs/internal/known-issues.md). There is an unsanitised upload filename, a rate-limit control that does not take effect, and a documented deployment that omits the cleanup scheduler.
 
-Copy `.env.example` to `.env` and set:
+## Support
 
-| Variable | Description |
-|----------|-------------|
-| `ALLOWED_ORIGINS` | Comma-separated list of allowed frontend origins |
-| `REDIS_URL` | Redis connection string |
+Open a [GitHub Discussion](https://github.com/willtheorangeguy/wikipicture-web/discussions/new) or file an [issue](https://github.com/willtheorangeguy/wikipicture-web/issues/new/choose).
 
----
+## Contributing
 
-## Deploying to Fly.io (Recommended Managed Hosting)
+Contributions welcome. See the org-wide [Contributing Guide](https://github.com/willtheorangeguy/.github/blob/main/CONTRIBUTING.md) and [Code of Conduct](https://github.com/willtheorangeguy/.github/blob/main/CODE_OF_CONDUCT.md).
 
-Fly.io offers ~$2–5/month for a small always-on instance with free SSL, global anycast, and easy scaling.
+## Credits
 
-### Prerequisites
+Analysis by [WikiPicture](https://github.com/willtheorangeguy/wikipicture). Built with [FastAPI](https://fastapi.tiangolo.com/), [Celery](https://docs.celeryq.dev/), [Redis](https://redis.io/), [React](https://react.dev/), and [nginx](https://nginx.org/). Tested end to end with [Playwright](https://playwright.dev/).
 
-- Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
-- Create a Fly.io account
+## License
 
-### Architecture on Fly.io
-
-The recommended setup runs three Fly.io apps:
-
-1. `wikipicture-web` — nginx + React frontend (this app, using `fly.toml`)
-2. `wikipicture-api` — FastAPI backend
-3. `wikipicture-worker` — Celery worker
-
-And one Redis service via **Upstash** (free tier).
-
-> **Note:** Each service is deployed as its own `fly launch` app. They communicate over Fly.io's private network (`<appname>.internal`) or via their public `fly.dev` URLs.
-
-### Step-by-step deployment
-
-#### 1. Set up Redis (Upstash)
-
-```bash
-# Install Upstash plugin
-fly extensions upstash create --name wikipicture-redis
-# Note the REDIS_URL from the output
-```
-
-#### 2. Deploy the API backend
-
-```bash
-cd backend
-fly launch --name wikipicture-api --no-deploy
-fly secrets set REDIS_URL="<your-upstash-url>" ALLOWED_ORIGINS="https://wikipicture-web.fly.dev"
-fly deploy
-```
-
-#### 3. Deploy the Celery worker
-
-```bash
-# Same image as backend, different start command
-fly launch --name wikipicture-worker --no-deploy
-fly secrets set REDIS_URL="<your-upstash-url>"
-# Edit fly.toml to use:
-#   [[processes]]
-#   command = "celery -A app.tasks.process.celery_app worker"
-fly deploy
-```
-
-#### 4. Deploy the frontend/nginx
-
-```bash
-cd ..
-fly launch --name wikipicture-web --no-deploy
-# Edit fly.toml: set API_URL to https://wikipicture-api.fly.dev
-fly deploy
-```
-
-### Updating the wikipicture package version
-
-When a new version of the `wikipicture` CLI is released on PyPI:
-
-1. Update `backend/pyproject.toml`: `wikipicture>=X.Y.Z`
-2. Redeploy: `fly deploy`
-
----
-
-## Alternative Hosting Options
-
-| Provider | Monthly Cost | Notes |
-|----------|-------------|-------|
-| **Fly.io** (recommended) | $0–5 | Best DX, native Docker, free tier |
-| Railway | $5 | Very easy, great GitHub integration |
-| Render | $0–7 | Free tier sleeps after 15 min inactivity |
-| DigitalOcean App Platform | $5 | Simple, reliable |
-| Hetzner VPS + Docker | $4 | Cheapest, manual setup |
-
----
-
-## Architecture
-
-```
-User → nginx (port 80/443)
-         ├── /api/* → FastAPI (uvicorn)
-         │              └── Celery worker (background processing)
-         │                     └── wikipicture PyPI package
-         └── /* → React SPA (static files)
-
-Redis: rate limiting + Celery broker + job results
-```
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REDIS_URL` | `redis://redis:6379/0` | Redis connection string |
-| `ALLOWED_ORIGINS` | `http://localhost` | CORS allowed origins |
-| `ENVIRONMENT` | `production` | `production` or `development` |
-| `JOB_TTL_SECONDS` | `3600` | How long to keep results (seconds) |
-| `MAX_PHOTOS_PER_UPLOAD` | `50` | Maximum photos per upload |
-
----
-
-## Rate Limits
-
-- 5 uploads per IP per hour
-- 100 photos per IP per day
-- 1 active job per IP at a time
-
----
-
-## Privacy
-
-All uploaded photos are processed in memory and permanently deleted after 1 hour. No images are stored permanently or shared with third parties.
+MIT — see [`LICENSE.md`](LICENSE.md).
