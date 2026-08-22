@@ -3,7 +3,7 @@
 A web front end for the WikiPicture CLI: upload photos in a browser, get back the same
 Wikipedia-opportunity analysis as an HTML report.
 
-```
+```text
 wikipicture-web/
 ├── backend/app/
 │   ├── main.py            FastAPI app, Redis pool, CORS

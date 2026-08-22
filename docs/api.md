@@ -44,7 +44,7 @@ scrutiny; see [`internal/known-issues.md`](./internal/known-issues.md).
 **A Server-Sent Events stream**, not a polling endpoint. It returns a `StreamingResponse` and
 holds the connection open for the life of the job.
 
-```
+```text
 data: {"stage": "geocoding", "current": 3, "total": 12}
 
 data: {"stage": "wikipedia", "current": 7, "total": 12}

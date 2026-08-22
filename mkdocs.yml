@@ -1,0 +1,35 @@
+# Documentation configuration for wikipicture-web.
+
+INHERIT: .mkdocs-shared/shared/mkdocs.base.yml
+
+site_name: 'WikiPicture Web'
+site_description: 'Scan your photos library to see if your pictures are a worthwhile contribution to Wikipedia and Wikimedia Commons, from a Dockerized web interface!'
+site_author: willtheorangeguy
+site_url: https://williamvdg.me/wikipicture-web/
+
+repo_url: https://github.com/willtheorangeguy/wikipicture-web
+repo_name: willtheorangeguy/wikipicture-web
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; willtheorangeguy
+
+nav:
+  - Home: index.md
+  - 'Quickstart': 'quickstart.md'
+  - 'Installation': 'installation.md'
+  - 'Configuration': 'configuration.md'
+  - 'Architecture': 'architecture.md'
+  - 'API': 'api.md'
+  - 'Deployment': 'deployment.md'
+  - 'Development': 'development.md'
+  - 'FAQ': 'faq.md'
+  - 'Troubleshooting': 'troubleshooting.md'
+  - 'Roadmap': 'roadmap.md'
+  - 'wikipicture-web': 'internal/known-issues.md'
+  - License: license.md
+  - Contributing: https://github.com/willtheorangeguy/.github/blob/main/CONTRIBUTING.md
+  - Code of Conduct: https://github.com/willtheorangeguy/.github/blob/main/CODE_OF_CONDUCT.md
+  - Security: https://github.com/willtheorangeguy/.github/blob/main/SECURITY.md
+
+exclude_docs: |
+  docs.instructions.md

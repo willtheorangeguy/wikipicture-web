@@ -51,7 +51,7 @@ Drop photos onto the page, wait for the job to finish, and download the report.
 
 ## Documentation
 
-Full documentation lives in [`docs/`](docs/README.md):
+Full documentation lives in [`docs/`](docs/index.md):
 [Quickstart](docs/quickstart.md) · [Installation](docs/installation.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Development](docs/development.md) · [Deployment](docs/deployment.md) · [FAQ](docs/faq.md) · [Troubleshooting](docs/troubleshooting.md) · [Roadmap](docs/roadmap.md)
 
 > **Before exposing this to the internet**, read [`docs/internal/known-issues.md`](docs/internal/known-issues.md). There is an unsanitised upload filename, a rate-limit control that does not take effect, and a documented deployment that omits the cleanup scheduler.

@@ -19,7 +19,7 @@ usually what you want when inspecting a job directory.
 
 ## Layout
 
-```
+```text
 backend/app/
 ├── main.py        app, CORS, Redis lifespan
 ├── config.py      settings

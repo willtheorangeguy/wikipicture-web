@@ -1,6 +1,6 @@
 # WikiPicture Web — Architecture
 
-```
+```text
 browser
   └── nginx :80
         ├── /api/*  →  FastAPI (uvicorn)
