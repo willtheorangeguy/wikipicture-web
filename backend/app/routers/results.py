@@ -109,7 +109,7 @@ async def delete_job(job_id: str, request: Request) -> dict:
     cleanup_job(job_id)
 
     rate_limiter = RateLimiter(request.app.state.redis)
-    rate_limiter.clear_active_job(ip)
+    await rate_limiter.clear_active_job(ip, job_id)
 
     logger.info("Job %s deleted by %s", job_id, ip)
     return {"deleted": True}
