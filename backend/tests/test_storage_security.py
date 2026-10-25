@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from fastapi import HTTPException
 
 from app import storage
 
@@ -20,6 +21,7 @@ def test_upload_stays_inside_job(tmp_path, monkeypatch, name):
 
 def test_job_id_cannot_escape_storage(tmp_path, monkeypatch):
     monkeypatch.setattr(storage.settings, "temp_dir", str(tmp_path))
-    with pytest.raises(ValueError):
+    with pytest.raises(HTTPException) as error:
         storage.save_upload("../../escape", "image.jpg", b"photo")
+    assert error.value.status_code == 404
     assert not list(tmp_path.iterdir())

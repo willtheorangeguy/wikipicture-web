@@ -6,12 +6,17 @@ import time
 from pathlib import Path, PureWindowsPath
 from uuid import UUID, uuid4
 
+from fastapi import HTTPException
+
 from app.config import settings
 
 
 def get_job_dir(job_id: str) -> Path:
     # Job identifiers also reach this helper from URL parameters.
-    job_id = str(UUID(str(job_id)))
+    try:
+        job_id = str(UUID(str(job_id)))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found") from None
     return Path(settings.temp_dir) / job_id
 
 
