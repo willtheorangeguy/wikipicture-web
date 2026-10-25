@@ -36,8 +36,14 @@ class RateLimiter:
             # Key was just created; set TTL to end of day (86400 s)
             await self.redis.expire(day_key, 86400)
 
-    def set_active_job(self, ip: str, job_id: str) -> None:
-        self.redis.set(f"active_job:{ip}", job_id, ex=settings.job_ttl_seconds)
+    async def set_active_job(self, ip: str, job_id: str) -> None:
+        acquired = await self.redis.set(f"active_job:{ip}", job_id, ex=settings.job_ttl_seconds, nx=True)
+        if not acquired:
+            raise HTTPException(status_code=429, detail="A job is already active for this IP")
 
-    def clear_active_job(self, ip: str) -> None:
-        self.redis.delete(f"active_job:{ip}")
+    async def clear_active_job(self, ip: str, job_id: str) -> None:
+        # A stale delete must not release a different, newer job's reservation.
+        await self.redis.eval(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+            1, f"active_job:{ip}", job_id,
+        )

@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from app.config import settings
 from app.models import JobResponse, JobStatus
 from app.rate_limit import RateLimiter
-from app.storage import create_job_dir, save_upload
+from app.storage import cleanup_job, create_job_dir, save_upload
 from app.tasks.process import process_photos
 
 logger = logging.getLogger(__name__)
@@ -67,19 +67,20 @@ async def upload_photos(
             detail=f"Upload too large: {total_bytes} bytes exceeds {settings.max_upload_bytes} byte limit",
         )
 
-    # 6. Persist files
+    # Reserve atomically before writing files or dispatching expensive work.
     job_id = str(uuid.uuid4())
-    create_job_dir(job_id)
-
-    saved_paths = []
-    for filename, content in file_contents:
-        path = save_upload(job_id, filename, content)
-        saved_paths.append(path)
-
-    # 7. Register active job and dispatch Celery task
-    rate_limiter.set_active_job(ip, job_id)
-    await rate_limiter.add_photos(ip, len(photos))
-    process_photos.delay(job_id, [str(p) for p in saved_paths])
+    await rate_limiter.set_active_job(ip, job_id)
+    try:
+        create_job_dir(job_id)
+        saved_paths = []
+        for filename, content in file_contents:
+            saved_paths.append(save_upload(job_id, filename, content))
+        await rate_limiter.add_photos(ip, len(photos))
+        process_photos.delay(job_id, [str(p) for p in saved_paths])
+    except Exception:
+        cleanup_job(job_id)
+        await rate_limiter.clear_active_job(ip, job_id)
+        raise
 
     logger.info("Job %s queued: %d photos from %s", job_id, len(photos), ip)
     return JobResponse(

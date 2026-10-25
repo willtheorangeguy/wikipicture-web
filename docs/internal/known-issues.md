@@ -20,7 +20,9 @@ which also covers deliberate non-goals.
 
 **Suggested fix:** Discard the client filename entirely and generate your own -- an index plus the extension implied by the detected MIME type. If the original name must be preserved for the report, store it as metadata rather than as a path. At minimum use `os.path.basename` and reject any name that is not a simple filename.
 
-## 2. The one-active-job-per-IP limit never takes effect
+## 2. The one-active-job-per-IP limit never takes effect — RESOLVED
+
+**Resolution:** Await Redis updates, reserve active jobs atomically with SET NX, and release only the matching job reservation on deletion or failed dispatch.
 
 **Severity:** High
 **Where:** `backend/app/rate_limit.py` -> `set_active_job`; `backend/app/routers/upload.py`
