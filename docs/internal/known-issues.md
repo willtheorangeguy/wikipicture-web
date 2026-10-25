@@ -9,7 +9,7 @@ which also covers deliberate non-goals.
 
 **5 open:** 3 high, 1 medium, 1 low.
 
-## 1. Upload filenames are used unsanitised as path components
+## 1. Upload filenames are used unsanitised as path components — RESOLVED
 
 **Severity:** High
 **Where:** `backend/app/routers/upload.py` -> `upload_photos`; `backend/app/storage.py` -> `save_upload`
@@ -19,6 +19,8 @@ which also covers deliberate non-goals.
 **Why it matters:** This is an unauthenticated, public-facing upload endpoint whose whole purpose is accepting files from strangers. An attacker can write bytes of their choosing to an arbitrary path with the API process's privileges, subject only to the content starting with JPEG or HEIC magic bytes -- enough to clobber configuration, drop files into a served directory, or destroy another job's `results.json` by targeting `../{other-job-id}/results.json`. The variable being named `safe_name` is what makes this invisible on review: the code reads as though sanitisation happened somewhere.
 
 **Suggested fix:** Discard the client filename entirely and generate your own -- an index plus the extension implied by the detected MIME type. If the original name must be preserved for the report, store it as metadata rather than as a path. At minimum use `os.path.basename` and reject any name that is not a simple filename.
+
+Uploads now receive unique names inside a UUID-validated job directory. Both Windows and POSIX path components are removed, and exclusive creation prevents overwrites.
 
 ## 2. The one-active-job-per-IP limit never takes effect
 
