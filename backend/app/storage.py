@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 import shutil
 import time
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from uuid import UUID, uuid4
 
 from app.config import settings
 
 
 def get_job_dir(job_id: str) -> Path:
+    # Job identifiers also reach this helper from URL parameters.
+    job_id = str(UUID(str(job_id)))
     return Path(settings.temp_dir) / job_id
 
 
@@ -20,8 +23,15 @@ def create_job_dir(job_id: str) -> Path:
 
 def save_upload(job_id: str, filename: str, data: bytes) -> Path:
     job_dir = create_job_dir(job_id)
-    dest = job_dir / filename
-    dest.write_bytes(data)
+    # Treat both Windows and POSIX separators as untrusted input. Give every
+    # upload a unique name so repeated names cannot replace photos or results.
+    name = PureWindowsPath(filename).name.replace("\x00", "")
+    name = Path(name).name
+    if name in {"", ".", ".."}:
+        name = "photo.jpg"
+    dest = job_dir / f"{uuid4().hex}_{name}"
+    with dest.open("xb") as stream:
+        stream.write(data)
     return dest
 
 
