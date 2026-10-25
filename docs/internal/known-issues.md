@@ -9,7 +9,7 @@ which also covers deliberate non-goals.
 
 **5 open:** 3 high, 1 medium, 1 low.
 
-## 1. Upload filenames are used unsanitised as path components
+## 1. Upload filenames are used unsanitised as path components — RESOLVED
 
 **Severity:** High
 **Where:** `backend/app/routers/upload.py` -> `upload_photos`; `backend/app/storage.py` -> `save_upload`
@@ -20,9 +20,9 @@ which also covers deliberate non-goals.
 
 **Suggested fix:** Discard the client filename entirely and generate your own -- an index plus the extension implied by the detected MIME type. If the original name must be preserved for the report, store it as metadata rather than as a path. At minimum use `os.path.basename` and reject any name that is not a simple filename.
 
-## 2. The one-active-job-per-IP limit never takes effect — RESOLVED
+Uploads now receive unique names inside a UUID-validated job directory. Both Windows and POSIX path components are removed, and exclusive creation prevents overwrites.
 
-**Resolution:** Await Redis updates, reserve active jobs atomically with SET NX, and release only the matching job reservation on deletion or failed dispatch.
+## 2. The one-active-job-per-IP limit never takes effect
 
 **Severity:** High
 **Where:** `backend/app/rate_limit.py` -> `set_active_job`; `backend/app/routers/upload.py`
