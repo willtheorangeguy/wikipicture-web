@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=9.1.0", "fakeredis[lua]>=2.32,<3"]
+test = ["pytest>=9.1.0", "fakeredis[lua]>=2.40.0,<3"]
 
 [tool.setuptools.packages.find]
 where = ["."]
