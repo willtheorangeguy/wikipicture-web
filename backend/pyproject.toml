@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.162.0",
     "uvicorn[standard]>=0.54.0",
-    "celery[redis]>=5.3",
+    "celery[redis]>=5.7.0",
     "redis>=8.1.0",
     "python-multipart>=0.0.9",
     "aiofiles>=25.1.0",
